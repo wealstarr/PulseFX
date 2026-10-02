@@ -18,7 +18,9 @@ import kotlin.math.*
  * - Analog Tube Simulator (6N1P / 12AX7 Dual-Triode Soft-Knee Saturation)
  * - Master Gate (Channel Pan Matrix & True-Peak Soft-Knee Limiter)
  */
-class ViperDspProcessor(private val sampleRate: Int = 48000) {\n\n    private val distortionProcessor = DistortionProcessor(sampleRate)
+class ViperDspProcessor(private val sampleRate: Int = 48000) {
+
+    private val distortionProcessor = DistortionProcessor(sampleRate)
 
     // Standard ViPER4Android 10-Band EQ Frequencies & Q
     private val bandFrequencies = floatArrayOf(31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f)
@@ -533,7 +535,23 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {\n\n    private va
                 right = right * dry + revWetR * wet
             }
 
-            // 11. Dedicated Distortion / Waveshaper\n            if (s.isDistortionEnabled && s.distortionDrive > 0) {\n                val mode = DistortionProcessor.Mode.values().getOrElse(s.distortionMode.coerceIn(0, 5)) { DistortionProcessor.Mode.SOFT_CLIP }\n                val distorted = distortionProcessor.processStereo(\n                    left, right,\n                    s.distortionDrive.toFloat(),\n                    s.distortionMix.toFloat(),\n                    s.distortionTone.toFloat(),\n                    s.distortionOutput.toFloat(),\n                    s.distortionAsymmetry.toFloat(),\n                    mode\n                )\n                left = distorted.first\n                right = distorted.second\n            }\n\n            // 12. Analog Tube Simulator (6N1P / 12AX7 Dual-Triode Soft-Knee Saturation)
+            // 11. Dedicated Distortion / Waveshaper
+            if (s.isDistortionEnabled && s.distortionDrive > 0) {
+                val mode = DistortionProcessor.Mode.values().getOrElse(s.distortionMode.coerceIn(0, 5)) { DistortionProcessor.Mode.SOFT_CLIP }
+                val distorted = distortionProcessor.processStereo(
+                    left, right,
+                    s.distortionDrive.toFloat(),
+                    s.distortionMix.toFloat(),
+                    s.distortionTone.toFloat(),
+                    s.distortionOutput.toFloat(),
+                    s.distortionAsymmetry.toFloat(),
+                    mode
+                )
+                left = distorted.first
+                right = distorted.second
+            }
+
+            // 12. Analog Tube Simulator (6N1P / 12AX7 Dual-Triode Soft-Knee Saturation)
             if (s.isTubeEnabled && tubeDrive > 1f) {
                 left = (tanh(left * tubeDrive) + 0.08f * left * left * tubeWarmthNorm) / tubeDrive
                 right = (tanh(right * tubeDrive) + 0.08f * right * right * tubeWarmthNorm) / tubeDrive
