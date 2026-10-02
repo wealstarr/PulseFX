@@ -59,6 +59,15 @@ data class EqualizerSettings(
     val clarityMode: Int = 1, // 0 = Natural, 1 = Ozone+, 2 = XHiFi Pro
     val clarity: Int = 500, // 0 to 1000 (0 to +14dB)
 
+    // Dedicated Distortion / Waveshaper
+    val isDistortionEnabled: Boolean = false,
+    val distortionMode: Int = 0, // 0 soft clip, 1 tanh, 2 hard clip, 3 foldback, 4 asymmetric, 5 sine fold
+    val distortionDrive: Int = 0, // 0..48 dB
+    val distortionMix: Int = 100, // 0..100% wet
+    val distortionTone: Int = 12000, // 200..20000 Hz post-tone
+    val distortionOutput: Int = 0, // -12..6 dB
+    val distortionAsymmetry: Int = 0, // -100..100%
+
     // Analog Tube Simulator (6N1P / 12AX7 Non-Linear Saturation)
     val isTubeEnabled: Boolean = false,
     val tubeWarmth: Int = 350, // 0 to 1000 (Warm triode even harmonics)
@@ -242,7 +251,15 @@ data class EqualizerSettings(
             val clarityMode = prefs.getInt("v4a_clarity_mode", 1)
             val clarity = prefs.getInt("v4a_clarity_gain", 500)
 
-            val isDistortionEnabled = prefs.getBoolean("v4a_distortion_enabled", false)\n            val distortionMode = prefs.getInt("v4a_distortion_mode", 0)\n            val distortionDrive = prefs.getInt("v4a_distortion_drive", 0)\n            val distortionMix = prefs.getInt("v4a_distortion_mix", 100)\n            val distortionTone = prefs.getInt("v4a_distortion_tone", 12000)\n            val distortionOutput = prefs.getInt("v4a_distortion_output", 0)\n            val distortionAsymmetry = prefs.getInt("v4a_distortion_asymmetry", 0)\n\n            val isTubeEnabled = prefs.getBoolean("v4a_tube_enabled", false)
+            val isDistortionEnabled = prefs.getBoolean("v4a_distortion_enabled", false)
+            val distortionMode = prefs.getInt("v4a_distortion_mode", 0)
+            val distortionDrive = prefs.getInt("v4a_distortion_drive", 0)
+            val distortionMix = prefs.getInt("v4a_distortion_mix", 100)
+            val distortionTone = prefs.getInt("v4a_distortion_tone", 12000)
+            val distortionOutput = prefs.getInt("v4a_distortion_output", 0)
+            val distortionAsymmetry = prefs.getInt("v4a_distortion_asymmetry", 0)
+
+            val isTubeEnabled = prefs.getBoolean("v4a_tube_enabled", false)
             val tubeWarmth = prefs.getInt("v4a_tube_warmth", 350)
 
             val isLimiterEnabled = prefs.getBoolean("v4a_limiter_enabled", false)
@@ -311,7 +328,14 @@ data class EqualizerSettings(
                 isClarityEnabled = isClarityEnabled,
                 clarityMode = clarityMode,
                 clarity = clarity,
-                isDistortionEnabled = isDistortionEnabled,\n                distortionMode = distortionMode,\n                distortionDrive = distortionDrive,\n                distortionMix = distortionMix,\n                distortionTone = distortionTone,\n                distortionOutput = distortionOutput,\n                distortionAsymmetry = distortionAsymmetry,\n                isTubeEnabled = isTubeEnabled,
+                isDistortionEnabled = isDistortionEnabled,
+                distortionMode = distortionMode,
+                distortionDrive = distortionDrive,
+                distortionMix = distortionMix,
+                distortionTone = distortionTone,
+                distortionOutput = distortionOutput,
+                distortionAsymmetry = distortionAsymmetry,
+                isTubeEnabled = isTubeEnabled,
                 tubeWarmth = tubeWarmth,
                 isLimiterEnabled = isLimiterEnabled,
                 outputGain = outputGain,
@@ -383,7 +407,15 @@ data class EqualizerSettings(
             putBoolean("v4a_clarity_enabled", isClarityEnabled)
             putInt("v4a_clarity_mode", clarityMode)
             putInt("v4a_clarity_gain", clarity)
-            putBoolean("v4a_distortion_enabled", isDistortionEnabled)\n            putInt("v4a_distortion_mode", distortionMode)\n            putInt("v4a_distortion_drive", distortionDrive)\n            putInt("v4a_distortion_mix", distortionMix)\n            putInt("v4a_distortion_tone", distortionTone)\n            putInt("v4a_distortion_output", distortionOutput)\n            putInt("v4a_distortion_asymmetry", distortionAsymmetry)\n\n            putBoolean("v4a_tube_enabled", isTubeEnabled)
+            putBoolean("v4a_distortion_enabled", isDistortionEnabled)
+            putInt("v4a_distortion_mode", distortionMode)
+            putInt("v4a_distortion_drive", distortionDrive)
+            putInt("v4a_distortion_mix", distortionMix)
+            putInt("v4a_distortion_tone", distortionTone)
+            putInt("v4a_distortion_output", distortionOutput)
+            putInt("v4a_distortion_asymmetry", distortionAsymmetry)
+
+            putBoolean("v4a_tube_enabled", isTubeEnabled)
             putInt("v4a_tube_warmth", tubeWarmth)
             putBoolean("v4a_limiter_enabled", isLimiterEnabled)
             putInt("v4a_out_gain", outputGain)
