@@ -514,7 +514,64 @@ fun MainScreen(
                     }
                 }
 
-                // 4. Analog Tube Simulator
+                // 4. Dedicated Distortion / Waveshaper
+                EffectCard(
+                    badgeText = "DIST",
+                    name = "Distortion / waveshaper",
+                    enabled = settings.isDistortionEnabled,
+                    onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDistortionEnabled = it) } }
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        ValuePicker(
+                            title = "Waveshape",
+                            values = arrayOf(
+                                "Soft clip", "Tanh", "Hard clip",
+                                "Foldback", "Asymmetric", "Sine fold"
+                            ),
+                            selectedIndex = settings.distortionMode.coerceIn(0, 5),
+                            onSelectedIndexChange = { idx ->
+                                viewModel.updateSettings { s -> s.copy(distortionMode = idx) }
+                            }
+                        )
+                        ValueSlider(
+                            title = "Drive",
+                            summary = "${settings.distortionDrive} dB",
+                            value = settings.distortionDrive,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionDrive = v) } },
+                            valueRange = 0..48
+                        )
+                        ValueSlider(
+                            title = "Wet / dry",
+                            summary = "${settings.distortionMix}%",
+                            value = settings.distortionMix,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionMix = v) } },
+                            valueRange = 0..100
+                        )
+                        ValueSlider(
+                            title = "Tone",
+                            summary = "${settings.distortionTone} Hz",
+                            value = settings.distortionTone,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionTone = v) } },
+                            valueRange = 200..20000
+                        )
+                        ValueSlider(
+                            title = "Output",
+                            summary = "${settings.distortionOutput} dB",
+                            value = settings.distortionOutput,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionOutput = v) } },
+                            valueRange = -12..6
+                        )
+                        ValueSlider(
+                            title = "Asymmetry",
+                            summary = "${settings.distortionAsymmetry}%",
+                            value = settings.distortionAsymmetry,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionAsymmetry = v) } },
+                            valueRange = -100..100
+                        )
+                    }
+                }
+
+                // 5. Analog Tube Simulator
                 EffectCard(
                     badgeText = "TUBE",
                     name = "Analog tube simulator (6N1P / 12AX7)",
