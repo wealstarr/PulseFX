@@ -99,7 +99,9 @@ fun MainScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "• Google Material 3 Dynamic Theming (adapts to wallpaper palettes)\n• Externalized dB & Hz graph axes for clean visual curves\n• Brushed titanium rotary dial interface & tactile haptics",
+                        text = "• Google Material 3 Dynamic Theming (adapts to wallpaper palettes)
+• Externalized dB & Hz graph axes for clean visual curves
+• Brushed titanium rotary dial interface & tactile haptics",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -113,7 +115,10 @@ fun MainScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "• Denver Colaco: Lead Architect, Creator & Project Vision\n• J.A.R.V.I.S.: Lead Architect & Systems Integrity\n• VECTOR: UI/UX, Motion & Adaptive Icon Design\n• CIPHER: 32-bit DSP Engine & Shizuku Interception",
+                        text = "• Denver Colaco: Lead Architect, Creator & Project Vision
+• J.A.R.V.I.S.: Lead Architect & Systems Integrity
+• VECTOR: UI/UX, Motion & Adaptive Icon Design
+• CIPHER: 32-bit DSP Engine & Shizuku Interception",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
