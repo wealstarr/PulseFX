@@ -27,6 +27,40 @@ class DistortionProcessorTest {
     }
 
     @Test
+    fun hardClipCreatesNonlinearityAtHighDrive() {
+        val processor = DistortionProcessor(48000)
+        val (left, right) = processor.processStereo(
+            left = 0.25f,
+            right = -0.25f,
+            driveDb = 24f,
+            mixPercent = 100f,
+            toneHz = 20000f,
+            outputDb = 0f,
+            asymmetryPercent = 0f,
+            mode = DistortionProcessor.Mode.HARD_CLIP
+        )
+        assertTrue(left != 0.25f)
+        assertTrue(right != -0.25f)
+    }
+
+    @Test
+    fun rectifyProducesNonNegativeOutput() {
+        val processor = DistortionProcessor(48000)
+        val (left, right) = processor.processStereo(
+            left = -0.8f,
+            right = -0.4f,
+            driveDb = 18f,
+            mixPercent = 100f,
+            toneHz = 20000f,
+            outputDb = 0f,
+            asymmetryPercent = 0f,
+            mode = DistortionProcessor.Mode.RECTIFY
+        )
+        assertTrue(left >= 0f)
+        assertTrue(right >= 0f)
+    }
+
+    @Test
     fun dryMixPreservesInput() {
         val processor = DistortionProcessor(48000)
         val (left, right) = processor.processStereo(

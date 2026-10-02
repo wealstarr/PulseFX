@@ -1,73 +1,148 @@
 package com.example.antigravityeq.data
 
-import kotlin.math.*
+import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.sin
+import kotlin.math.tanh
+import kotlin.math.pow
 
 /**
- * Dedicated nonlinear distortion processor.
+ * Dedicated nonlinear distortion stage.
  *
- * Clean-room implementation of standard waveshaping techniques.
- * It is intentionally independent from the existing tube/AnalogX stages.
+ * Clean-room implementation of a production-style waveshaper chain:
+ * pre-gain -> dynamics/spread -> bias -> nonlinear transfer -> DC blocker
+ * -> tone filter -> output trim -> wet/dry.
+ *
+ * A real 2x half-band FIR oversampling stage surrounds the nonlinear transfer
+ * to reduce alias products. Transfer curves are independently written from
+ * documented DSP behavior; no source code is copied from Tryptify.
  */
 class DistortionProcessor(private val sampleRate: Int = 48000) {
 
     enum class Mode(val label: String) {
         SOFT_CLIP("Soft clip"),
-        TANH("Tanh"),
         HARD_CLIP("Hard clip"),
+        TANH("Tanh saturation"),
         FOLDBACK("Foldback"),
-        ASYMMETRIC("Asymmetric"),
-        SINE_FOLD("Sine fold")
+        RECTIFY("Rectify"),
+        ASYMMETRIC("Asymmetric")
     }
 
-    private var toneStateL = 0f
-    private var toneStateR = 0f
+    private class HalfBand2x {
+        private val h = floatArrayOf(
+            -3f / 632f, 0f, 15f / 632f, 0f, -48f / 632f, 0f,
+            194f / 632f, 316f / 632f, 194f / 632f, 0f, -48f / 632f,
+            0f, 15f / 632f, 0f, -3f / 632f
+        )
+        private val inHistory = FloatArray(h.size)
+        private val outHistory = FloatArray(h.size)
+        private var inPos = 0
+        private var outPos = 0
 
-    fun reset() {
-        toneStateL = 0f
-        toneStateR = 0f
-    }
+        private fun push(history: FloatArray, sample: Float, position: Int): Pair<Float, Int> {
+            history[position] = sample
+            var sum = 0f
+            var index = position
+            for (k in h.indices) {
+                sum += h[k] * history[index]
+                index--
+                if (index < 0) index = h.lastIndex
+            }
+            return sum to ((position + 1) % h.size)
+        }
 
-    private fun shape(x: Float, mode: Mode, asymmetry: Float): Float {
-        val a = asymmetry.coerceIn(-1f, 1f)
-        val biased = x + a * 0.18f
+        fun process(input: Float, shape: (Float) -> Float): Float {
+            val (hi0, nextIn0) = push(inHistory, input, inPos)
+            inPos = nextIn0
+            val (hi1, nextIn1) = push(inHistory, 0f, inPos)
+            inPos = nextIn1
 
-        return when (mode) {
-            Mode.SOFT_CLIP -> {
-                val k = 1.8f
-                (biased * (1f + k)).let { v ->
-                    v / (1f + abs(v))
-                }
-            }
-            Mode.TANH -> tanh(biased)
-            Mode.HARD_CLIP -> biased.coerceIn(-1f, 1f)
-            Mode.FOLDBACK -> {
-                var v = biased
-                if (abs(v) <= 1f) v
-                else {
-                    repeat(8) {
-                        if (v > 1f) v = 2f - v
-                        if (v < -1f) v = -2f - v
-                        if (abs(v) <= 1f) return@repeat
-                    }
-                    v.coerceIn(-1f, 1f)
-                }
-            }
-            Mode.ASYMMETRIC -> {
-                val pos = max(0f, biased)
-                val neg = max(0f, -biased)
-                val posCurve = tanh(pos * 1.35f)
-                val negCurve = tanh(neg * (0.85f + 0.55f * (a + 1f)))
-                posCurve - negCurve
-            }
-            Mode.SINE_FOLD -> sin(biased * Math.PI.toFloat() * 0.5f).coerceIn(-1f, 1f)
+            val shaped0 = shape(hi0)
+            val shaped1 = shape(hi1)
+
+            val (lo0, nextOut0) = push(outHistory, shaped0, outPos)
+            outPos = nextOut0
+            push(outHistory, shaped1, outPos)
+            return lo0
+        }
+
+        fun reset() {
+            java.util.Arrays.fill(inHistory, 0f)
+            java.util.Arrays.fill(outHistory, 0f)
+            inPos = 0
+            outPos = 0
         }
     }
 
-    private fun tone(sample: Float, cutoffHz: Float, state: Float): Pair<Float, Float> {
+    private var envelopeL = 0f
+    private var envelopeR = 0f
+    private var dcX1L = 0f
+    private var dcX1R = 0f
+    private var dcY1L = 0f
+    private var dcY1R = 0f
+    private var toneStateL = 0f
+    private var toneStateR = 0f
+
+    private val oversamplerL = HalfBand2x()
+    private val oversamplerR = HalfBand2x()
+    private val dryDelayL = FloatArray(7)
+    private val dryDelayR = FloatArray(7)
+    private var dryDelayPos = 0
+
+    fun reset() {
+        envelopeL = 0f
+        envelopeR = 0f
+        dcX1L = 0f
+        dcX1R = 0f
+        dcY1L = 0f
+        dcY1R = 0f
+        toneStateL = 0f
+        toneStateR = 0f
+        oversamplerL.reset()
+        oversamplerR.reset()
+        java.util.Arrays.fill(dryDelayL, 0f)
+        java.util.Arrays.fill(dryDelayR, 0f)
+        dryDelayPos = 0
+    }
+
+    private fun waveshape(x: Float, mode: Mode): Float = when (mode) {
+        Mode.SOFT_CLIP -> {
+            val ax = abs(x)
+            when {
+                ax > 1.5f -> if (x > 0f) 1f else -1f
+                ax > 1f -> {
+                    val t = (3f - (2f - ax) * (2f - ax)) / 3f
+                    if (x > 0f) t else -t
+                }
+                else -> x - (x * x * x) / 3f
+            }
+        }
+        Mode.HARD_CLIP -> x.coerceIn(-1f, 1f)
+        Mode.TANH -> tanh(x)
+        Mode.FOLDBACK -> sin(x * Math.PI.toFloat())
+        Mode.RECTIFY -> abs(x).coerceIn(0f, 1f)
+        Mode.ASYMMETRIC -> if (x >= 0f) 1f - exp(-x) else -tanh(-x * 1.5f)
+    }
+
+    private fun envelope(input: Float, previous: Float): Float {
+        val magnitude = abs(input)
+        val coeff = if (magnitude > previous) {
+            exp(-1f / (0.005f * sampleRate))
+        } else {
+            exp(-1f / (0.050f * sampleRate))
+        }
+        return coeff * previous + (1f - coeff) * magnitude
+    }
+
+    private fun dcBlock(sample: Float, previousX: Float, previousY: Float): Float {
+        return sample - previousX + 0.995f * previousY
+    }
+
+    private fun tone(sample: Float, cutoffHz: Float, state: Float): Float {
         val cutoff = cutoffHz.coerceIn(200f, (sampleRate * 0.45f).coerceAtLeast(200f))
-        val alpha = (1f - exp(-2f * Math.PI.toFloat() * cutoff / sampleRate.toFloat())).coerceIn(0.001f, 1f)
-        val next = state + alpha * (sample - state)
-        return next to next
+        val alpha = (1f - exp(-2f * Math.PI.toFloat() * cutoff / sampleRate.toFloat()))
+            .coerceIn(0.001f, 1f)
+        return state + alpha * (sample - state)
     }
 
     fun processStereo(
@@ -78,23 +153,46 @@ class DistortionProcessor(private val sampleRate: Int = 48000) {
         toneHz: Float,
         outputDb: Float,
         asymmetryPercent: Float,
-        mode: Mode
+        mode: Mode,
+        dynamicsPercent: Float = 0f,
+        spreadPercent: Float = 0f
     ): Pair<Float, Float> {
-        val drive = 10f.pow(driveDb.coerceIn(0f, 48f) / 20f)
-        val wet = (mixPercent.coerceIn(0f, 100f) / 100f)
+        val wetAmount = mixPercent.coerceIn(0f, 100f) / 100f
+        if (wetAmount <= 0f || driveDb <= 0f) return left to right
+
+        // The 2x FIR path introduces about 7 input-sample periods of delay.
+        val dryL = dryDelayL[dryDelayPos]
+        val dryR = dryDelayR[dryDelayPos]
+        dryDelayL[dryDelayPos] = left
+        dryDelayR[dryDelayPos] = right
+        dryDelayPos = (dryDelayPos + 1) % dryDelayL.size
+
+        envelopeL = envelope(left, envelopeL)
+        envelopeR = envelope(right, envelopeR)
+
+        val baseDrive = 10f.pow(driveDb.coerceIn(0f, 48f) / 20f)
+        val dynamics = dynamicsPercent.coerceIn(0f, 100f) / 100f
+        val spread = spreadPercent.coerceIn(0f, 100f) / 100f * 0.5f
+        val driveL = baseDrive * (1f + dynamics * envelopeL * 4f) * (1f + spread)
+        val driveR = baseDrive * (1f + dynamics * envelopeR * 4f) * (1f - spread)
+        val bias = asymmetryPercent.coerceIn(-100f, 100f) / 100f * 0.12f
+
+        val wetL = oversamplerL.process(left * driveL + bias) { x -> waveshape(x, mode) }
+        val wetR = oversamplerR.process(right * driveR + bias) { x -> waveshape(x, mode) }
+
+        val blockedL = dcBlock(wetL, dcX1L, dcY1L)
+        val blockedR = dcBlock(wetR, dcX1R, dcY1R)
+        dcX1L = wetL
+        dcX1R = wetR
+        dcY1L = blockedL
+        dcY1R = blockedR
+
+        toneStateL = tone(blockedL, toneHz, toneStateL)
+        toneStateR = tone(blockedR, toneHz, toneStateR)
+
         val output = 10f.pow(outputDb.coerceIn(-12f, 6f) / 20f)
-        val asym = asymmetryPercent.coerceIn(-100f, 100f) / 100f
-
-        val wetL = shape(left * drive, mode, asym)
-        val wetR = shape(right * drive, mode, asym)
-
-        val toneL = tone(wetL, toneHz, toneStateL)
-        val toneR = tone(wetR, toneHz, toneStateR)
-        toneStateL = toneL.second
-        toneStateR = toneR.second
-
-        val outL = (left * (1f - wet) + toneL.first * wet) * output
-        val outR = (right * (1f - wet) + toneR.first * wet) * output
+        val outL = (dryL * (1f - wetAmount) + toneStateL * wetAmount) * output
+        val outR = (dryR * (1f - wetAmount) + toneStateR * wetAmount) * output
         return outL.coerceIn(-1.5f, 1.5f) to outR.coerceIn(-1.5f, 1.5f)
     }
 }

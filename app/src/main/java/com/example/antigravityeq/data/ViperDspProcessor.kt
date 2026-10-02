@@ -545,7 +545,9 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                     s.distortionTone.toFloat(),
                     s.distortionOutput.toFloat(),
                     s.distortionAsymmetry.toFloat(),
-                    mode
+                    mode,
+                    s.distortionDynamics.toFloat(),
+                    s.distortionSpread.toFloat()
                 )
                 left = distorted.first
                 right = distorted.second

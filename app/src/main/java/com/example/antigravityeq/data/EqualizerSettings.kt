@@ -66,7 +66,9 @@ data class EqualizerSettings(
     val distortionMix: Int = 100, // 0..100% wet
     val distortionTone: Int = 12000, // 200..20000 Hz post-tone
     val distortionOutput: Int = 0, // -12..6 dB
-    val distortionAsymmetry: Int = 0, // -100..100%
+    val distortionAsymmetry: Int = 0, // -100..100% bias
+    val distortionDynamics: Int = 0, // 0..100% envelope-following drive
+    val distortionSpread: Int = 0, // 0..100% stereo drive offset
 
     // Analog Tube Simulator (6N1P / 12AX7 Non-Linear Saturation)
     val isTubeEnabled: Boolean = false,
@@ -258,6 +260,8 @@ data class EqualizerSettings(
             val distortionTone = prefs.getInt("v4a_distortion_tone", 12000)
             val distortionOutput = prefs.getInt("v4a_distortion_output", 0)
             val distortionAsymmetry = prefs.getInt("v4a_distortion_asymmetry", 0)
+            val distortionDynamics = prefs.getInt("v4a_distortion_dynamics", 0)
+            val distortionSpread = prefs.getInt("v4a_distortion_spread", 0)
 
             val isTubeEnabled = prefs.getBoolean("v4a_tube_enabled", false)
             val tubeWarmth = prefs.getInt("v4a_tube_warmth", 350)
@@ -414,6 +418,8 @@ data class EqualizerSettings(
             putInt("v4a_distortion_tone", distortionTone)
             putInt("v4a_distortion_output", distortionOutput)
             putInt("v4a_distortion_asymmetry", distortionAsymmetry)
+            putInt("v4a_distortion_dynamics", distortionDynamics)
+            putInt("v4a_distortion_spread", distortionSpread)
 
             putBoolean("v4a_tube_enabled", isTubeEnabled)
             putInt("v4a_tube_warmth", tubeWarmth)

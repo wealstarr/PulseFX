@@ -530,8 +530,8 @@ fun MainScreen(
                         ValuePicker(
                             title = "Waveshape",
                             values = arrayOf(
-                                "Soft clip", "Tanh", "Hard clip",
-                                "Foldback", "Asymmetric", "Sine fold"
+                                "Soft clip", "Hard clip", "Tanh saturation",
+                                "Foldback", "Rectify", "Asymmetric"
                             ),
                             selectedIndex = settings.distortionMode.coerceIn(0, 5),
                             onSelectedIndexChange = { idx ->
@@ -567,11 +567,25 @@ fun MainScreen(
                             valueRange = -12..6
                         )
                         ValueSlider(
-                            title = "Asymmetry",
+                            title = "Bias",
                             summary = "${settings.distortionAsymmetry}%",
                             value = settings.distortionAsymmetry,
                             onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionAsymmetry = v) } },
                             valueRange = -100..100
+                        )
+                        ValueSlider(
+                            title = "Dynamics",
+                            summary = "${settings.distortionDynamics}%",
+                            value = settings.distortionDynamics,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionDynamics = v) } },
+                            valueRange = 0..100
+                        )
+                        ValueSlider(
+                            title = "Stereo spread",
+                            summary = "${settings.distortionSpread}%",
+                            value = settings.distortionSpread,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionSpread = v) } },
+                            valueRange = 0..100
                         )
                     }
                 }
