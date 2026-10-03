@@ -161,14 +161,16 @@ class DistortionProcessor(private val sampleRate: Int = 48000) {
         spreadPercent: Float = 0f
     ): Pair<Float, Float> {
         val wetAmount = mixPercent.coerceIn(0f, 100f) / 100f
-        if (wetAmount <= 0f || driveDb <= 0f) return left to right
 
-        // The 2x FIR path introduces about 7 input-sample periods of delay.
+        // Keep the dry delay advancing even while bypassed so re-enabling the
+        // effect cannot expose stale samples at the wet/dry crossover.
         val dryL = dryDelayL[dryDelayPos]
         val dryR = dryDelayR[dryDelayPos]
         dryDelayL[dryDelayPos] = left
         dryDelayR[dryDelayPos] = right
         dryDelayPos = (dryDelayPos + 1) % dryDelayL.size
+
+        if (wetAmount <= 0f || driveDb <= 0f) return left to right
 
         envelopeL = envelope(left, envelopeL)
         envelopeR = envelope(right, envelopeR)
