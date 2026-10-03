@@ -28,23 +28,26 @@ class DistortionProcessor(private val sampleRate: Int = 48000) {
         ASYMMETRIC("Asymmetric")
     }
 
-    private class HalfBand2x {
-        private val h = floatArrayOf(
+    internal class HalfBand2x {
+        // Each polyphase component sums to 0.5. Zero-stuffing interpolation
+        // therefore needs 2x compensation; decimation stays at unity gain.
+        private val hDecimation = floatArrayOf(
             -3f / 632f, 0f, 15f / 632f, 0f, -48f / 632f, 0f,
             194f / 632f, 316f / 632f, 194f / 632f, 0f, -48f / 632f,
             0f, 15f / 632f, 0f, -3f / 632f
         )
-        private val inHistory = FloatArray(h.size)
-        private val outHistory = FloatArray(h.size)
+        private val hInterpolation = hDecimation.map { it * 2f }.toFloatArray()
+        private val inHistory = FloatArray(hInterpolation.size)
+        private val outHistory = FloatArray(hDecimation.size)
         private var inPos = 0
         private var outPos = 0
 
-        private fun push(history: FloatArray, sample: Float, position: Int): Pair<Float, Int> {
+        private fun push(history: FloatArray, sample: Float, position: Int, coefficients: FloatArray): Pair<Float, Int> {
             history[position] = sample
             var sum = 0f
             var index = position
-            for (k in h.indices) {
-                sum += h[k] * history[index]
+            for (k in coefficients.indices) {
+                sum += coefficients[k] * history[index]
                 index--
                 if (index < 0) index = h.lastIndex
             }
@@ -52,17 +55,17 @@ class DistortionProcessor(private val sampleRate: Int = 48000) {
         }
 
         fun process(input: Float, shape: (Float) -> Float): Float {
-            val (hi0, nextIn0) = push(inHistory, input, inPos)
+            val (hi0, nextIn0) = push(inHistory, input, inPos, hInterpolation)
             inPos = nextIn0
-            val (hi1, nextIn1) = push(inHistory, 0f, inPos)
+            val (hi1, nextIn1) = push(inHistory, 0f, inPos, hInterpolation)
             inPos = nextIn1
 
             val shaped0 = shape(hi0)
             val shaped1 = shape(hi1)
 
-            val (lo0, nextOut0) = push(outHistory, shaped0, outPos)
+            val (lo0, nextOut0) = push(outHistory, shaped0, outPos, hDecimation)
             outPos = nextOut0
-            push(outHistory, shaped1, outPos)
+            push(outHistory, shaped1, outPos, hDecimation)
             return lo0
         }
 
