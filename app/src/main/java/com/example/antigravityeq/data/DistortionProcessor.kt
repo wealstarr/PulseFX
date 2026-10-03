@@ -49,9 +49,9 @@ class DistortionProcessor(private val sampleRate: Int = 48000) {
             for (k in coefficients.indices) {
                 sum += coefficients[k] * history[index]
                 index--
-                if (index < 0) index = h.lastIndex
+                if (index < 0) index = coefficients.lastIndex
             }
-            return sum to ((position + 1) % h.size)
+            return sum to ((position + 1) % coefficients.size)
         }
 
         fun process(input: Float, shape: (Float) -> Float): Float {
