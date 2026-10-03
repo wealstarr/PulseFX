@@ -1,10 +1,26 @@
 package com.example.antigravityeq.data
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
 
 class DistortionProcessorTest {
+
+
+    @Test
+    fun twoXHalfBandPathPreservesUnityGainWithLinearShaper() {
+        val oversampler = DistortionProcessor.HalfBand2x()
+        var output = 0f
+
+        repeat(100) {
+            output = oversampler.process(0.25f) { it }
+        }
+
+        // The interpolation FIR has 2x compensation; the decimation FIR
+        // remains unity gain. After settling, DC should return at unity.
+        assertEquals(0.25f, output, 0.0001f)
+    }
 
     @Test
     fun tanhDriveProducesNonlinearOutput() {
